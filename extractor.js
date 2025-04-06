@@ -7,6 +7,28 @@ const res = await fetch(url);
 const html = await res.text();
 const portalTwoRelatedStuff = html.split(`id="Portal_2"`).pop();
 
+const samplesToSkip = [
+  "Non ! NON ! NON ! AAAAAAAAAAAAAAA-",
+  "Je suis vraiment désolée pour cette surprise. Tenez, vous savez quoi, nous allons appeler vos parents. [sonnerie téléphonique]. Les parents biologiques que vous essayez de joindre ne vous aiment pas. Veuillez raccrocher. [clic. Tonalité]",
+  "Le prochain test... [boum !] ... est... [BOUM !] dangereux jervientoudsuite.",
+  "[bip-bip-bip] À propos, vous avez l'air en forme. Très svelte.",
+  "Le saviez-vous ? Les personnes qui n'ont pas la conscience tranquille sont plus sensibles aux crises car-[corne de brume]"
+];
+
+const textsToReplace = {
+  "N'espérez surtout pas revenir.": "Ne comptez surtout pas revenir.",
+  "OK.": "Bien.",
+  "Assez !": "Arrêtez !",
+  "Salle de test terminée. Dans l'intérêt de la science, le centre d'enrichissement est fier de vous présenter la liste de nombres suivante : neuf. Sept. Cinquante. Trois. Sept cent sept.":
+    "Vous vous débrouillez très bien tous les deux.",
+  "Le centre d'enrichissement va maintenant vous communiquer une liste de nombres et de fruits. Prenez soin de les noter car ils auront de l'importance ultérieurement dans l'expérience. Pas les fruits, toutefois. Sept. Avocat. Quarante. Veuillez rejoindre la salle de test suivante.":
+    "Vous vous débrouillez très bien tous les deux.",
+  "Salle de test terminée. Dans l'intérêt de -  Cent sept.":
+    "J'ai fait un peu de lecture. Saviez-vous que le mot Orange a la même racine latine que le mot traitre ?",
+  "Excellent.": "Parfait.",
+  "Mais qu'est-ce que vous faites?": "Que faites-vous tous les deux?",
+};
+
 let matches = [
   ...portalTwoRelatedStuff.matchAll(
     /<li>.*<\/li>|<span class="mw-headline".*<\/span>/g
@@ -28,6 +50,7 @@ for (let i = 0; i < matches.length; i++) {
   }
 
   if (shouldSkipCurrentMatch) continue;
+  if (samplesToSkip.includes(match)) continue;
 
   let audioLink = match
     .split(`class="internal"`)[0]
@@ -46,14 +69,9 @@ for (let i = 0; i < matches.length; i++) {
     .trim();
 
   if (!text || !audioLink) continue;
+  if (audioLink.includes("potatos")) continue;
 
-  if(text === "N'espérez surtout pas revenir.") text = "Ne comptez surtout pas revenir."
-  if(text === "OK.") text = "Bien."
-  if(text === "Assez !") text = "Arrêtez !"
-  if(text === "Salle de test terminée. Dans l'intérêt de la science, le centre d'enrichissement est fier de vous présenter la liste de nombres suivante : neuf. Sept. Cinquante. Trois. Sept cent sept.") text = "Vous vous débrouillez très bien tous les deux."
-  if(text === "Le centre d'enrichissement va maintenant vous communiquer une liste de nombres et de fruits. Prenez soin de les noter car ils auront de l'importance ultérieurement dans l'expérience. Pas les fruits, toutefois. Sept. Avocat. Quarante. Veuillez rejoindre la salle de test suivante.") text = "Vous vous débrouillez très bien tous les deux."
-  if(text === "Salle de test terminée. Dans l'intérêt de -  Cent sept.") text = "J'ai fait un peu de lecture. Saviez-vous que le mot Orange a la même racine latine que le mot traitre ?"
-  if(text === "Excellent.") text = "Parfait."
+  if (textsToReplace[text]) text = textsToReplace[text];
 
   samples.push({
     audioLink,
@@ -61,7 +79,7 @@ for (let i = 0; i < matches.length; i++) {
   });
 }
 
-fs.mkdirSync("./wav")
+fs.mkdirSync("./wav");
 fs.writeFileSync(`./metadata.csv`, "");
 
 for (let i = 0; i < samples.length; i++) {
@@ -70,7 +88,11 @@ for (let i = 0; i < samples.length; i++) {
   try {
     let parsedUrl = new URL(element.audioLink);
   } catch (_) {
-    console.log("Got invalid url for element :", element.audioLink, ", skipping");
+    console.log(
+      "Got invalid url for element :",
+      element.audioLink,
+      ", skipping"
+    );
     continue;
   }
 
@@ -80,5 +102,5 @@ for (let i = 0; i < samples.length; i++) {
     .then((buf) => {
       fs.writeFile(`./wav/${i}.wav`, Buffer.from(buf), () => {});
     });
-    fs.appendFileSync(`./metadata.csv`, `${i}|"${element.text}"\n`);
+  fs.appendFileSync(`./metadata.csv`, `${i}|"${element.text}"\n`);
 }
